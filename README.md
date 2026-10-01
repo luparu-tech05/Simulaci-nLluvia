@@ -28,7 +28,7 @@ Tu opinión es fundamental para mejorar esta herramienta. Si has probado la apli
 
 *   **Frontend:** HTML5, CSS3, Vanilla JavaScript (ES6+).
 *   **Renderizado:** Canvas API (Motor de proyección isométrica 3D propio, sin dependencias pesadas como WebGL o Three.js).
-*   **Bibliotecas de Terceros:** [geotiff.js](https://geotiffjs.github.io/) (vía CDN) exclusivamente para la extracción de datos de elevación de los archivos `.tif`.
+*   **Origen de Datos y Procesamiento:** Los datos de elevación en formato `.tif` fueron descargados de **Google Earth Engine** y se leen localmente utilizando la biblioteca de terceros [geotiff.js](https://geotiffjs.github.io/) (vía CDN) para extraer la información del terreno.
 
 ## 🚀 Instalación y Uso
 
