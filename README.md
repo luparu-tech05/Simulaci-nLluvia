@@ -1,6 +1,6 @@
 # 🗺️ Simulador 3D de Terreno y Lluvia con Ajuste Polinomial GeoTIFF
 
-Una aplicación web interactiva que permite cargar modelos de elevación digital (DEM) en formato GeoTIFF, extraer una región de interés (ROI) de forma gráfica, realizar una regresión polinomial sobre el terreno seleccionado y visualizar una simulación física de escorrentía de agua (lluvia) en 3D calculada en tiempo real.
+Una aplicación web interactiva desarrollada, desde el semillero SiMULa de la Universidad Militar Nueva Granada, que permite cargar modelos de elevación digital (DEM) en formato GeoTIFF, extraer una región de interés (ROI) de forma gráfica, realizar una regresión polinomial sobre el terreno seleccionado y visualizar una simulación física de escorrentía de agua (lluvia) en 3D calculada en tiempo real.
 
 ---
 
