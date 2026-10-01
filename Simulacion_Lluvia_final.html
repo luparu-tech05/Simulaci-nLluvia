@@ -1,0 +1,792 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ajuste Polinomial TIFF y Simulación con Cuadro Interactivo</title>
+<!-- Carga de biblioteca para decodificar GeoTIFFs localmente -->
+<script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0b0f19; font-family: system-ui, -apple-system, sans-serif; color: #e2e8f0; }
+ 
+  /*Simulación de Lluvia en superficies reales
+  Lucero Patricia Rueda Galván
+  Erika Sofia Murcia Charry
+  Martin Ricardo Espinel Benitez
+  Jean Pierre Díaz Paz*/
+
+  /* Pantalla de Carga Inicial */
+  #upload-screen {
+    max-width: 600px;
+    margin: 60px auto;
+    padding: 24px;
+    background: #161e2e;
+    border-radius: 12px;
+    border: 1px solid #2d3748;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  }
+  h1 { font-size: 20px; margin-bottom: 16px; color: #60a5fa; text-align: center; }
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+  input[type="file"], input[type="number"] {
+    width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155;
+    border-radius: 6px; color: #fff; font-size: 14px;
+  }
+  .btn-start {
+    width: 100%; padding: 12px; background: #2563eb; color: #fff; border: none;
+    border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-start:hover { background: #1d4ed8; }
+  #status { margin-top: 12px; font-size: 12px; color: #f59e0b; text-align: center; min-height: 18px; }
+
+  /* Contenedor Principal Lado a Lado (Layout Dual) */
+  #app-screen {
+    display: none;
+    max-width: 1350px;
+    margin: 15px auto;
+    padding: 0 15px;
+  }
+  .dual-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .panel {
+    background: #161e2e;
+    border-radius: 12px;
+    border: 1px solid #2d3748;
+    padding: 15px;
+  }
+  .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #38bdf8;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Canvas de Imagen 2D + ROI Interactivo */
+  #canvas-container-2d {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #0f172a;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #334155;
+  }
+  #c2d {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Rectángulo Interactivo (ROI) */
+  #roi-box {
+    position: absolute;
+    border: 2px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    cursor: move;
+    box-sizing: border-box;
+  }
+  .handle {
+    position: absolute;
+    width: 100px;
+    height: 10px;
+    background: #f59e0b;
+    border: 1px solid #ffffff;
+    border-radius: 2px;
+  }
+  .handle.nw { top: -5px; left: -5px; cursor: nwse-resize; width: 10px; }
+  .handle.ne { top: -5px; right: -5px; cursor: nesw-resize; width: 10px; }
+  .handle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; width: 10px; }
+  .handle.se { bottom: -5px; right: -5px; cursor: nwse-resize; width: 10px; }
+
+  /* Canvas 3D y Controles */
+  canvas#c3d { width: 100%; display: block; border-radius: 8px; border: 1px solid #334155; cursor: grab; }
+  canvas#c3d:active { cursor: grabbing; }
+  #stats { display: flex; gap: 8px; margin-top: 8px; }
+  .stat { flex: 1; background: #1e293b; border-radius: 6px; padding: 6px 8px; border: 1px solid #334155; text-align: center; }
+  .stat .n { font-size: 16px; font-weight: bold; color: #38bdf8; }
+  .stat .l { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+  #controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .ctrl { background: #1e293b; border-radius: 6px; padding: 6px 10px; border: 1px solid #334155; }
+  .ctrl label { font-size: 11px; color: #94a3b8; display: block; }
+  .ctrl .val { font-size: 11px; font-weight: bold; float: right; color: #f1f5f9; }
+  .ctrl input[type=range] { width: 100%; margin-top: 2px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .btn { flex: 1; min-width: 80px; padding: 7px 0; font-size: 11px; font-weight: 500; cursor: pointer; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #f1f5f9; text-align: center; }
+  .btn:hover { background: #334155; }
+  .btn.on { background: #2563eb; color: #fff; border-color: #3b82f6; }
+  .btn.btn-zenith { background: #059669; border-color: #10b981; }
+  .btn.btn-zenith:hover { background: #047857; }
+  .info-tag { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- PANTALLA 1: CARGA DE ARCHIVO -->
+<div id="upload-screen">
+  <h1>Ajuste Polinomial TIFF e Inundación 3D</h1>
+  <div class="field">
+    <label>1. Selecciona un archivo GeoTIFF / TIFF (.tif)</label>
+    <input type="file" id="tiffFile" accept=".tif, .tiff">
+  </div>
+  <div class="field">
+    <label>2. Grado del Polinomio ($N$)</label>
+    <input type="number" id="polyDegree" min="1" max="5" value="2">
+  </div>
+  <button class="btn-start" onclick="cargarTiffInicial()">Cargar Imagen y Simular</button>
+  <div id="status"></div>
+</div>
+
+<!-- PANTALLA 2: VISTA PARALELA (2D DERECHA Y 3D IZQUIERDA) -->
+<div id="app-screen">
+  <div class="dual-container">
+    
+    <!-- PANEL IZQUIERDO: IMAGEN 2D + RECTÁNGULO DE SELECCIÓN -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>🗺 Imagen Raster GeoTIFF (2D)</span>
+        <span style="font-size:11px; color:#f59e0b;">Arrastra / Escala el cuadro</span>
+      </div>
+      <div id="canvas-container-2d">
+        <canvas id="c2d"></canvas>
+        <div id="roi-box">
+          <div class="handle nw"></div>
+          <div class="handle ne"></div>
+          <div class="handle sw"></div>
+          <div class="handle se"></div>
+        </div>
+      </div>
+      <div class="info-tag">Mueve o escala el recuadro naranja para ajustar el área de simulación.</div>
+    </div>
+
+    <!-- PANEL DERECHO: MODELO Y SIMULACIÓN 3D -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>🌧 Simulación de Lluvia 3D (Área Seleccionada)</span>
+      </div>
+      <canvas id="c3d"></canvas>
+      
+      <div id="stats">
+        <div class="stat"><div class="n" id="sN">0</div><div class="l">cayendo</div></div>
+        <div class="stat"><div class="n" id="sGrado">2</div><div class="l">grado polinomio</div></div>
+        <div class="stat"><div class="n" id="sRmse">0.00 m</div><div class="l">RMSE</div></div>
+        <div class="stat"><div class="n" id="sFps">0</div><div class="l">fps</div></div>
+        <div class="stat"><div class="n" id="sVol">0</div><div class="l">partículas</div></div>
+      </div>
+
+      <div id="controls">
+        <div class="ctrl">
+          <label>Escala Z (Solo Positiva) <span class="val" id="vZ">1.0</span></label>
+          <input type="range" id="inputZ" min="0.1" max="4.0" step="0.1" value="1.0" oninput="SCALE_Z=+this.value;document.getElementById('vZ').textContent=(+this.value).toFixed(1)">
+        </div>
+        <div class="ctrl">
+          <label>Intensidad lluvia <span class="val" id="vI">80</span></label>
+          <input type="range" min="0" max="300" value="80" oninput="RATE=+this.value;document.getElementById('vI').textContent=this.value">
+        </div>
+        <div class="ctrl">
+          <label>Altura inicial gotas <span class="val" id="vH">2.5</span></label>
+          <input type="range" min="0.5" max="6" step="0.1" value="2.5" oninput="DROP_H=+this.value;document.getElementById('vH').textContent=(+this.value).toFixed(1)">
+        </div>
+        <div class="ctrl">
+          <label>Gravedad <span class="val" id="vG">9.8</span></label>
+          <input type="range" min="1" max="25" step="0.1" value="9.8" oninput="G=+this.value;document.getElementById('vG').textContent=(+this.value).toFixed(1)">
+        </div>
+        <div class="ctrl" style="grid-column: span 2;">
+          <label>Fricción <span class="val" id="vF">0.88</span></label>
+          <input type="range" min="0.5" max="0.99" step="0.01" value="0.88" oninput="FRIC=+this.value;document.getElementById('vF').textContent=(+this.value).toFixed(2)">
+        </div>
+      </div>
+
+      <div class="btns">
+        <button class="btn on" id="bCont" onclick="setMode('cont')">☁ Continua</button>
+        <button class="btn" id="bStorm" onclick="setMode('storm')">⛈ Tormenta</button>
+        <button class="btn" id="bPoint" onclick="setMode('point')">💧 Puntual</button>
+        <button class="btn btn-zenith" onclick="setVistaCenital()">📍 Vista Cenital</button>
+        <button class="btn" id="bPause" onclick="togglePause()">⏸ Pausa</button>
+        <button class="btn" onclick="clearAll()">🗑 Limpiar</button>
+      </div>
+      <div class="info-tag">Arrastra con el ratón para rotar (X/Y) | Usa la rueda del ratón o el slider para ajustar la altura (Z positivo)</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// =========================================================
+// VARIABLES GLOBALES Y ESTADO DEL RÁSTER
+// =========================================================
+let tiffZData = null;
+let tiffWidth = 0;
+let tiffHeight = 0;
+
+let polyCoeffs = [];
+let polyTerms = [];
+let polyDegree = 2;
+let currentRMSE = 0;
+
+// ROI en porcentajes normalizados [0.0 - 1.0]
+let roi = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
+
+// =========================================================
+// 1. CARGA INICIAL Y DIBUJO DE IMAGEN 2D
+// =========================================================
+async function cargarTiffInicial() {
+  const fileInput = document.getElementById('tiffFile');
+  const status = document.getElementById('status');
+  polyDegree = parseInt(document.getElementById('polyDegree').value) || 2;
+
+  if (!fileInput.files.length) {
+    status.textContent = 'Por favor selecciona un archivo GeoTIFF.';
+    return;
+  }
+
+  status.textContent = 'Leyendo GeoTIFF...';
+
+  try {
+    const file = fileInput.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+    const image = await tiff.getImage();
+    const rasters = await image.readRasters();
+    
+    tiffZData = rasters[0];
+    tiffWidth = image.getWidth();
+    tiffHeight = image.getHeight();
+
+    renderizarCanvas2D();
+    actualizarPosicionDOMROI();
+
+    document.getElementById('upload-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+
+    initROIInteraction();
+    recalcularModeloYSimulacion();
+    requestAnimationFrame(render3D);
+
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Error al procesar la imagen GeoTIFF.';
+  }
+}
+
+function renderizarCanvas2D() {
+  const c2d = document.getElementById('c2d');
+  c2d.width = tiffWidth;
+  c2d.height = tiffHeight;
+  const ctx = c2d.getContext('2d');
+  const imgData = ctx.createImageData(tiffWidth, tiffHeight);
+
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < tiffZData.length; i++) {
+    let v = tiffZData[i];
+    if (!isNaN(v) && v > -9999) {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+  let range = (max - min) || 1;
+
+  for (let i = 0; i < tiffZData.length; i++) {
+    let v = tiffZData[i];
+    let idx = i * 4;
+    if (isNaN(v) || v <= -9999) {
+      imgData.data[idx] = 15; imgData.data[idx+1] = 23; imgData.data[idx+2] = 42; imgData.data[idx+3] = 255;
+    } else {
+      let norm = (v - min) / range;
+      imgData.data[idx] = Math.round(30 + norm * 180);
+      imgData.data[idx+1] = Math.round(70 + norm * 130);
+      imgData.data[idx+2] = Math.round(20 + norm * 60);
+      imgData.data[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// =========================================================
+// 2. REGRESIÓN POLINOMIAL SOBRE LA SUB-REGIÓN SELECCIONADA
+// =========================================================
+function recalcularModeloYSimulacion() {
+  let minCol = Math.floor(roi.x * tiffWidth);
+  let maxCol = Math.floor((roi.x + roi.w) * tiffWidth);
+  let minRow = Math.floor(roi.y * tiffHeight);
+  let maxRow = Math.floor((roi.y + roi.h) * tiffHeight);
+
+  let X_mat = [];
+  let Z_vec = [];
+  let evalPoints = [];
+
+  polyTerms = [];
+  for (let deg = 0; deg <= polyDegree; deg++) {
+    for (let a = deg; a >= 0; a--) {
+      let b = deg - a;
+      polyTerms.push({a, b});
+    }
+  }
+
+  const stepCol = Math.max(1, Math.floor((maxCol - minCol) / 50));
+  const stepRow = Math.max(1, Math.floor((maxRow - minRow) / 50));
+
+  for (let r = minRow; r < maxRow; r += stepRow) {
+    for (let c = minCol; c < maxCol; c += stepCol) {
+      let idx = r * tiffWidth + c;
+      let zVal = tiffZData[idx];
+
+      if (isNaN(zVal) || zVal <= -9999) continue;
+
+      let xNorm = -1 + 2 * ((c - minCol) / Math.max(1, maxCol - minCol));
+      let yNorm = -1 + 2 * ((r - minRow) / Math.max(1, maxRow - minRow));
+
+      let row = polyTerms.map(t => Math.pow(xNorm, t.a) * Math.pow(yNorm, t.b));
+      X_mat.push(row);
+      Z_vec.push(zVal);
+      evalPoints.push({ xNorm, yNorm, zReal: zVal });
+    }
+  }
+
+  if (X_mat.length > 0) {
+    polyCoeffs = resolverMinimosCuadrados(X_mat, Z_vec);
+    
+    // Cálculo del RMSE
+    let sumSquaredError = 0;
+    for (let p of evalPoints) {
+      let zPred = 0;
+      for (let i = 0; i < polyTerms.length; i++) {
+        let t = polyTerms[i];
+        zPred += polyCoeffs[i] * Math.pow(p.xNorm, t.a) * Math.pow(p.yNorm, t.b);
+      }
+      let diff = zPred - p.zReal;
+      sumSquaredError += diff * diff;
+    }
+    currentRMSE = Math.sqrt(sumSquaredError / evalPoints.length);
+  } else {
+    currentRMSE = 0;
+  }
+
+  buildTerrain();
+  clearAll();
+}
+
+function resolverMinimosCuadrados(X, Z) {
+  let numTerms = X[0].length;
+  let XtX = Array(numTerms).fill(0).map(() => Array(numTerms).fill(0));
+  let XtZ = Array(numTerms).fill(0);
+
+  for (let i = 0; i < X.length; i++) {
+    for (let r = 0; r < numTerms; r++) {
+      for (let c = 0; c < numTerms; c++) {
+        XtX[r][c] += X[i][r] * X[i][c];
+      }
+      XtZ[r] += X[i][r] * Z[i];
+    }
+  }
+
+  for (let i = 0; i < numTerms; i++) {
+    let pivot = XtX[i][i];
+    if (Math.abs(pivot) < 1e-12) pivot = 1e-12;
+    for (let j = i; j < numTerms; j++) XtX[i][j] /= pivot;
+    XtZ[i] /= pivot;
+
+    for (let k = 0; k < numTerms; k++) {
+      if (k !== i) {
+        let factor = XtX[k][i];
+        for (let j = i; j < numTerms; j++) XtX[k][j] -= factor * XtX[i][j];
+        XtZ[k] -= factor * XtZ[i];
+      }
+    }
+  }
+  return XtZ;
+}
+
+function f(x, y) {
+  if (!polyCoeffs.length) return 0;
+  let z = 0;
+  for (let i = 0; i < polyTerms.length; i++) {
+    let t = polyTerms[i];
+    z += polyCoeffs[i] * Math.pow(x, t.a) * Math.pow(y, t.b);
+  }
+  return z / 500;
+}
+
+function gradF(x, y) {
+  let dzdx = 0, dzdy = 0;
+  for (let i = 0; i < polyTerms.length; i++) {
+    let t = polyTerms[i];
+    if (t.a > 0) dzdx += polyCoeffs[i] * t.a * Math.pow(x, t.a - 1) * Math.pow(y, t.b);
+    if (t.b > 0) dzdy += polyCoeffs[i] * t.b * Math.pow(x, t.a) * Math.pow(y, t.b - 1);
+  }
+  return { dzdx: dzdx / 500, dzdy: dzdy / 500 };
+}
+
+// =========================================================
+// 3. INTERACCIÓN DEL RECTÁNGULO (ROI)
+// =========================================================
+function actualizarPosicionDOMROI() {
+  const box = document.getElementById('roi-box');
+  box.style.left = (roi.x * 100) + '%';
+  box.style.top = (roi.y * 100) + '%';
+  box.style.width = (roi.w * 100) + '%';
+  box.style.height = (roi.h * 100) + '%';
+}
+
+function initROIInteraction() {
+  const box = document.getElementById('roi-box');
+  const container = document.getElementById('canvas-container-2d');
+  
+  let activeAction = null;
+  let startX, startY, startRoi;
+
+  box.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    startX = e.clientX;
+    startY = e.clientY;
+    startRoi = { ...roi };
+
+    if (e.target.classList.contains('handle')) {
+      if (e.target.classList.contains('nw')) activeAction = 'nw';
+      else if (e.target.classList.contains('ne')) activeAction = 'ne';
+      else if (e.target.classList.contains('sw')) activeAction = 'sw';
+      else if (e.target.classList.contains('se')) activeAction = 'se';
+    } else {
+      activeAction = 'drag';
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!activeAction) return;
+
+    const rect = container.getBoundingClientRect();
+    let dx = (e.clientX - startX) / rect.width;
+    let dy = (e.clientY - startY) / rect.height;
+
+    if (activeAction === 'drag') {
+      roi.x = Math.max(0, Math.min(1 - startRoi.w, startRoi.x + dx));
+      roi.y = Math.max(0, Math.min(1 - startRoi.h, startRoi.y + dy));
+    } else {
+      if (activeAction.includes('e')) roi.w = Math.max(0.1, Math.min(1 - startRoi.x, startRoi.w + dx));
+      if (activeAction.includes('s')) roi.h = Math.max(0.1, Math.min(1 - startRoi.y, startRoi.h + dy));
+      if (activeAction.includes('w')) {
+        let newW = Math.max(0.1, startRoi.w - dx);
+        roi.x = startRoi.x + (startRoi.w - newW);
+        roi.w = newW;
+      }
+      if (activeAction.includes('n')) {
+        let newH = Math.max(0.1, startRoi.h - dy);
+        roi.y = startRoi.y + (startRoi.h - newH);
+        roi.h = newH;
+      }
+    }
+
+    actualizarPosicionDOMROI();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (activeAction) {
+      activeAction = null;
+      recalcularModeloYSimulacion();
+    }
+  });
+}
+
+// =========================================================
+// 4. MOTOR DE SIMULACIÓN Y VISUALIZACIÓN 3D
+// =========================================================
+const cv3 = document.getElementById('c3d');
+const ct3 = cv3.getContext('2d');
+const W = 600, H = 480;
+cv3.width = W; cv3.height = H;
+
+let G = 9.8, FRIC = 0.88, RATE = 80, DROP_H = 2.5;
+
+let CAM = 25 * Math.PI / 180;
+let TILT = 0.9;
+let SCALE_Z = 1.0;
+
+let paused = false, mode = 'cont';
+
+let falling = [];
+let settled = [];
+const GRID = 40, DT = 0.016;
+
+let T = [], minZ = Infinity, maxZ = -Infinity;
+function buildTerrain() {
+  T = []; minZ = Infinity; maxZ = -Infinity;
+  for (let i = 0; i <= GRID; i++) {
+    T[i] = [];
+    for (let j = 0; j <= GRID; j++) {
+      const x = -1 + 2 * i / GRID, y = -1 + 2 * j / GRID, z = f(x, y);
+      T[i][j] = { x, y, z };
+      if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    }
+  }
+}
+
+let waterCount = [];
+function initWaterCount() {
+  waterCount = [];
+  for (let i = 0; i <= GRID; i++) {
+    waterCount[i] = [];
+    for (let j = 0; j <= GRID; j++) waterCount[i][j] = 0;
+  }
+}
+initWaterCount();
+
+function terrainZ(wx, wy) {
+  const fi = (wx + 1) / 2 * GRID, fj = (wy + 1) / 2 * GRID;
+  const i = Math.max(0, Math.min(GRID - 1, Math.floor(fi)));
+  const j = Math.max(0, Math.min(GRID - 1, Math.floor(fj)));
+  const tx = fi - i, ty = fj - j;
+  const i1 = Math.min(i + 1, GRID), j1 = Math.min(j + 1, GRID);
+  return T[i][j].z * (1 - tx) * (1 - ty) + T[i1][j].z * tx * (1 - ty) +
+         T[i][j1].z * (1 - tx) * ty + T[i1][j1].z * tx * ty;
+}
+
+function addToWaterGrid(wx, wy) {
+  const i = Math.max(0, Math.min(GRID, Math.round((wx + 1) / 2 * GRID)));
+  const j = Math.max(0, Math.min(GRID, Math.round((wy + 1) / 2 * GRID)));
+  waterCount[i][j] += 1;
+}
+
+function proj(x, y, z) {
+  const zr = (maxZ - minZ) || 1;
+  const zn = ((z - minZ) / zr) * SCALE_Z;
+  const ox = (x + 1) / 2 - 0.5, oy = (y + 1) / 2 - 0.5;
+  const rx = ox * Math.cos(CAM) - oy * Math.sin(CAM);
+  const ry = ox * Math.sin(CAM) + oy * Math.cos(CAM);
+  return { px: W / 2 + rx * W * 0.40, py: H * 0.5 + ry * H * 0.40 * TILT - zn * H * 0.20 };
+}
+
+function derivFall(s) { return [s[3], s[4], s[5], 0, 0, -G * 2.8]; }
+function derivGround(s) {
+  const g = gradF(Math.max(-1, Math.min(1, s[0])), Math.max(-1, Math.min(1, s[1])));
+  return [s[2], s[3], -G * 0.45 * g.dzdx, -G * 0.45 * g.dzdy];
+}
+function rk4(s, deriv, dt) {
+  const k1 = deriv(s);
+  const s2 = s.map((v, i) => v + k1[i] * dt / 2);
+  const k2 = deriv(s2);
+  const s3 = s.map((v, i) => v + k2[i] * dt / 2);
+  const k3 = deriv(s3);
+  const s4 = s.map((v, i) => v + k3[i] * dt);
+  const k4 = deriv(s4);
+  return s.map((v, i) => v + (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) * dt / 6);
+}
+
+function spawn() {
+  let px, py;
+  if (mode === 'storm') { const a = Math.random() * Math.PI * 2, r = Math.random() * 0.35; px = 0.15 + Math.cos(a) * r; py = 0.15 + Math.sin(a) * r; }
+  else if (mode === 'point') { px = (Math.random() - 0.5) * 0.08; py = (Math.random() - 0.5) * 0.08; }
+  else { px = -1 + Math.random() * 2; py = -1 + Math.random() * 2; }
+  px = Math.max(-1, Math.min(1, px)); py = Math.max(-1, Math.min(1, py));
+  const tz = terrainZ(px, py), z0 = tz + DROP_H + Math.random() * 0.3;
+  return {
+    sf: [px, py, z0, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0],
+    sg: null, onGround: false, age: 0, trail: [], fallTrail: [[px, py, z0]], r: 1.4 + Math.random() * 0.6
+  };
+}
+
+function step() {
+  if (!paused) {
+    const n = Math.round(RATE * DT);
+    for (let i = 0; i < n; i++) falling.push(spawn());
+  }
+  if (paused) return;
+
+  const stillFalling = [];
+  for (const p of falling) {
+    p.age++;
+    if (!p.onGround) {
+      let sn = rk4(p.sf, derivFall, DT);
+      if (sn[0] < -1) { sn[0] = -1; sn[3] = Math.abs(sn[3]) * 0.4; }
+      if (sn[0] > 1) { sn[0] = 1; sn[3] = -Math.abs(sn[3]) * 0.4; }
+      if (sn[1] < -1) { sn[1] = -1; sn[4] = Math.abs(sn[4]) * 0.4; }
+      if (sn[1] > 1) { sn[1] = 1; sn[4] = -Math.abs(sn[4]) * 0.4; }
+      p.sf = sn;
+      if (p.age % 2 === 0) p.fallTrail.push([sn[0], sn[1], sn[2]]);
+      if (p.fallTrail.length > 20) p.fallTrail.shift();
+      if (sn[2] <= terrainZ(sn[0], sn[1])) {
+        p.onGround = true;
+        p.sg = [sn[0], sn[1], sn[3] + (Math.random() - 0.5) * 0.04, sn[4] + (Math.random() - 0.5) * 0.04];
+        p.fallTrail = [];
+      }
+      stillFalling.push(p);
+    } else {
+      let sn = rk4(p.sg, derivGround, DT);
+      sn[2] *= FRIC; sn[3] *= FRIC;
+      if (sn[0] < -1) { sn[0] = -1; sn[2] = Math.abs(sn[2]) * 0.3; }
+      if (sn[0] > 1) { sn[0] = 1; sn[2] = -Math.abs(sn[2]) * 0.3; }
+      if (sn[1] < -1) { sn[1] = -1; sn[3] = Math.abs(sn[3]) * 0.3; }
+      if (sn[1] > 1) { sn[1] = 1; sn[3] = -Math.abs(sn[3]) * 0.3; }
+      p.sg = sn;
+      const tz = terrainZ(sn[0], sn[1]);
+      const last = p.trail[p.trail.length - 1];
+      if (!last || Math.hypot(sn[0] - last[0], sn[1] - last[1]) > 0.008) {
+        p.trail.push([sn[0], sn[1], tz]);
+        if (p.trail.length > 20) p.trail.shift();
+      }
+      if (Math.hypot(sn[2], sn[3]) < 0.0004 && p.age > 80) {
+        const fx = sn[0], fy = sn[1], fz = terrainZ(fx, fy);
+        addToWaterGrid(fx, fy);
+        settled.push({ x: fx, y: fy, z: fz, r: p.r });
+      } else {
+        stillFalling.push(p);
+      }
+    }
+  }
+  falling = stillFalling;
+}
+
+function drawTerrain() {
+  const zr = (maxZ - minZ) || 1;
+  let maxW = 1;
+  for (let i = 0; i <= GRID; i++) for (let j = 0; j <= GRID; j++) if (waterCount[i][j] > maxW) maxW = waterCount[i][j];
+
+  const cells = [];
+  for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++) {
+    const avgZ = (T[i][j].z + T[i + 1][j].z + T[i][j + 1].z + T[i + 1][j + 1].z) / 4;
+    const ox = ((T[i][j].x + T[i + 1][j].x) / 2 + 1) / 2 - 0.5;
+    const oy = ((T[i][j].y + T[i][j + 1].y) / 2 + 1) / 2 - 0.5;
+    cells.push({ i, j, avgZ, depth: -ox * Math.sin(CAM) + oy * Math.cos(CAM) });
+  }
+  cells.sort((a, b) => b.depth - a.depth);
+
+  for (const { i, j, avgZ } of cells) {
+    const n = (avgZ - minZ) / zr;
+    const p0 = proj(T[i][j].x, T[i][j].y, T[i][j].z);
+    const p1 = proj(T[i + 1][j].x, T[i + 1][j].y, T[i + 1][j].z);
+    const p2 = proj(T[i + 1][j + 1].x, T[i + 1][j + 1].y, T[i + 1][j + 1].z);
+    const p3 = proj(T[i][j + 1].x, T[i][j + 1].y, T[i][j + 1].z);
+
+    const r = Math.round(30 + n * 160), g = Math.round(70 + n * 130), b = Math.round(20 + n * 60);
+    ct3.fillStyle = `rgb(${r},${g},${b})`;
+    ct3.strokeStyle = 'rgba(0,0,0,0.12)'; ct3.lineWidth = 0.25;
+    ct3.beginPath(); ct3.moveTo(p0.px, p0.py); ct3.lineTo(p1.px, p1.py);
+    ct3.lineTo(p2.px, p2.py); ct3.lineTo(p3.px, p3.py); ct3.closePath();
+    ct3.fill(); ct3.stroke();
+
+    const wAvg = (waterCount[i][j] + waterCount[i + 1][j] + waterCount[i][j + 1] + waterCount[i + 1][j + 1]) / 4;
+    if (wAvg > 0.5) {
+      const wd = Math.min(wAvg / maxW, 1);
+      const wLift = wd * 0.12;
+      const wp0 = proj(T[i][j].x, T[i][j].y, T[i][j].z + wLift);
+      const wp1 = proj(T[i + 1][j].x, T[i + 1][j].y, T[i + 1][j].z + wLift);
+      const wp2 = proj(T[i + 1][j + 1].x, T[i + 1][j + 1].y, T[i + 1][j + 1].z + wLift);
+      const wp3 = proj(T[i][j + 1].x, T[i][j + 1].y, T[i][j + 1].z + wLift);
+      const alpha = Math.min(0.18 + wd * 0.70, 0.88);
+      const wr = Math.round(20 + wd * 30), wg = Math.round(90 + wd * 60), wb = Math.round(195 + wd * 60);
+      ct3.fillStyle = `rgba(${wr},${wg},${wb},${alpha.toFixed(2)})`;
+      ct3.beginPath(); ct3.moveTo(wp0.px, wp0.py); ct3.lineTo(wp1.px, wp1.py);
+      ct3.lineTo(wp2.px, wp2.py); ct3.lineTo(wp3.px, wp3.py); ct3.closePath(); ct3.fill();
+    }
+  }
+}
+
+function drawSettled() {
+  ct3.fillStyle = 'rgba(50,130,240,0.55)';
+  for (const p of settled) {
+    const pp = proj(p.x, p.y, p.z);
+    ct3.beginPath(); ct3.arc(pp.px, pp.py, p.r * 0.9, 0, Math.PI * 2); ct3.fill();
+  }
+}
+
+function drawFalling() {
+  for (const p of falling) {
+    if (!p.onGround) continue;
+    if (p.trail.length > 1) {
+      ct3.beginPath();
+      const pt0 = proj(p.trail[0][0], p.trail[0][1], p.trail[0][2]);
+      ct3.moveTo(pt0.px, pt0.py);
+      for (let k = 1; k < p.trail.length; k++) {
+        const ptk = proj(p.trail[k][0], p.trail[k][1], p.trail[k][2]);
+        ct3.lineTo(ptk.px, ptk.py);
+      }
+      ct3.strokeStyle = 'rgba(80,160,255,0.4)'; ct3.lineWidth = 0.9; ct3.stroke();
+    }
+  }
+  for (const p of falling) {
+    if (!p.onGround) continue;
+    const [x, y] = p.sg, tz = terrainZ(x, y), pp = proj(x, y, tz);
+    ct3.beginPath(); ct3.arc(pp.px, pp.py, p.r * 1.1, 0, Math.PI * 2);
+    ct3.fillStyle = 'rgba(40,130,245,0.80)'; ct3.fill();
+  }
+  for (const p of falling) {
+    if (p.onGround) continue;
+    const [x, y, z] = p.sf;
+    if (p.fallTrail.length > 1) {
+      for (let k = 1; k < p.fallTrail.length; k++) {
+        const pa = proj(...p.fallTrail[k - 1]), pb = proj(...p.fallTrail[k]);
+        const alpha = (k / p.fallTrail.length * 0.6).toFixed(2);
+        ct3.beginPath(); ct3.moveTo(pa.px, pa.py); ct3.lineTo(pb.px, pb.py);
+        ct3.strokeStyle = `rgba(160,215,255,${alpha})`; ct3.lineWidth = 1.3; ct3.stroke();
+      }
+    }
+    const pp = proj(x, y, z), elong = Math.min(1 + Math.abs(p.sf[5]) * 1.6, 5);
+    ct3.save(); ct3.translate(pp.px, pp.py); ct3.scale(1, elong);
+    ct3.beginPath(); ct3.arc(0, 0, p.r * 0.85, 0, Math.PI * 2);
+    ct3.fillStyle = 'rgba(195,228,255,0.93)'; ct3.fill(); ct3.restore();
+  }
+}
+
+function drawHUD() {
+  const total = falling.length + settled.length;
+  document.getElementById('sN').textContent = falling.filter(p => !p.onGround).length.toLocaleString();
+  document.getElementById('sGrado').textContent = polyDegree; // Muestra el grado de polinomio cargado
+  document.getElementById('sRmse').textContent = currentRMSE.toFixed(2) + " m"; // Actualizado con unidades
+  document.getElementById('sVol').textContent = total.toLocaleString();
+}
+
+let lastT = 0, fpsA = 0, fpsC = 0;
+function render3D(ts) {
+  const dt = ts - lastT; lastT = ts; fpsA += dt; fpsC++;
+  if (fpsA > 600) { document.getElementById('sFps').textContent = Math.round(fpsC * 1000 / fpsA); fpsA = 0; fpsC = 0; }
+  step();
+  ct3.clearRect(0, 0, W, H);
+  ct3.fillStyle = '#0d1520'; ct3.fillRect(0, 0, W, H);
+  drawTerrain();
+  drawSettled();
+  drawFalling();
+  drawHUD();
+  requestAnimationFrame(render3D);
+}
+
+function setMode(m) {
+  mode = m;
+  ['Cont', 'Storm', 'Point'].forEach(id => document.getElementById('b' + id).classList.remove('on'));
+  document.getElementById('b' + m.charAt(0).toUpperCase() + m.slice(1)).classList.add('on');
+}
+
+function setVistaCenital() {
+  CAM = 0;
+  TILT = 2.0;
+}
+
+function togglePause() { paused = !paused; document.getElementById('bPause').textContent = paused ? '▶ Reanudar' : '⏸ Pausa'; }
+function clearAll() { falling = []; settled = []; initWaterCount(); }
+
+cv3.addEventListener('mousemove', e => {
+  if (e.buttons === 1) {
+    CAM += e.movementX * 0.012;
+    TILT = Math.max(0.1, Math.min(2.5, TILT - e.movementY * 0.008));
+  }
+});
+
+cv3.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  SCALE_Z = Math.max(0.1, Math.min(4.0, SCALE_Z + delta));
+  
+  const inputZ = document.getElementById('inputZ');
+  if (inputZ) {
+    inputZ.value = SCALE_Z;
+    document.getElementById('vZ').textContent = SCALE_Z.toFixed(1);
+  }
+}, { passive: false });
+</script>
+</body>
+</html>
