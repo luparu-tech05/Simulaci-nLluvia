@@ -35,7 +35,7 @@ Tu opinión es fundamental para mejorar esta herramienta. Si has probado la apli
 Dado que es una aplicación basada completamente en tecnologías web del lado del cliente, no requiere instalación compleja ni configuraciones de servidor.
 
 1.  **Descargar y Descomprimir:**
-    Descarga el archivo `Simulacion_Lluvia_final.zip` y extrae su contenido en una carpeta de tu computadora. Al descomprimirlo, encontrarás el código fuente (`index.html`) junto con dos imágenes de elevación de prueba en formato `.tiff`.
+    Descarga el archivo `Simulacion_Lluvia_final.zip` y extrae su contenido en una carpeta de tu computadora. Al descomprimirlo, encontrarás el código fuente (`Simulacion_Lluvia_final.html`) junto con dos imágenes de elevación de prueba en formato `.tiff`.
 
 2.  **Abrir la aplicación:**
     Simplemente haz doble clic en el archivo `Simulacion_Lluvia_final.html` para abrirlo en cualquier navegador web moderno (Chrome, Firefox, Edge, Safari). 
