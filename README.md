@@ -38,7 +38,7 @@ Dado que es una aplicación basada completamente en tecnologías web del lado de
     Descarga el archivo `Simulacion_Lluvia_final.zip` y extrae su contenido en una carpeta de tu computadora. Al descomprimirlo, encontrarás el código fuente (`index.html`) junto con dos imágenes de elevación de prueba en formato `.tiff`.
 
 2.  **Abrir la aplicación:**
-    Simplemente haz doble clic en el archivo `index.html` para abrirlo en cualquier navegador web moderno (Chrome, Firefox, Edge, Safari). 
+    Simplemente haz doble clic en el archivo `Simulacion_Lluvia_final.html` para abrirlo en cualquier navegador web moderno (Chrome, Firefox, Edge, Safari). 
     *(Nota: Algunas funciones estrictas de seguridad local de los navegadores podrían requerir que abras el archivo a través de un servidor local simple, como la extensión "Live Server" en VSCode o ejecutando `python -m http.server` desde tu terminal en la carpeta extraída).*
 
 3.  **Probar el simulador:**
