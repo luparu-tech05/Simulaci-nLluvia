@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -45,8 +44,27 @@
     display: none;
     max-width: 1350px;
     margin: 15px auto;
-    padding: 0 15px;
+    padding: 15px;
   }
+
+  /* Botón de Atrás */
+  .btn-back {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    margin-bottom: 15px;
+  }
+  .btn-back:hover {
+    background: #334155;
+    color: #f1f5f9;
+  }
+
   .dual-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -146,8 +164,10 @@
 
 <!-- PANTALLA 2: VISTA PARALELA (2D DERECHA Y 3D IZQUIERDA) -->
 <div id="app-screen">
+  <!-- BOTÓN DE RETORNO -->
+  <button class="btn-back" onclick="volverInicio()">&#8592; Volver al inicio</button>
+
   <div class="dual-container">
-    
     <!-- PANEL IZQUIERDO: IMAGEN 2D + RECTÁNGULO DE SELECCIÓN -->
     <div class="panel">
       <div class="panel-title">
@@ -199,8 +219,8 @@
           <input type="range" min="1" max="25" step="0.1" value="9.8" oninput="G=+this.value;document.getElementById('vG').textContent=(+this.value).toFixed(1)">
         </div>
         <div class="ctrl" style="grid-column: span 2;">
-          <label>Fricción <span class="val" id="vF">0.88</span></label>
-          <input type="range" min="0.5" max="0.99" step="0.01" value="0.88" oninput="FRIC=+this.value;document.getElementById('vF').textContent=(+this.value).toFixed(2)">
+          <label>Fricción <span class="val" id="vF">0.10</span></label>
+          <input type="range" min="0" max="0.5" step="0.01" value="0.10" oninput="FRIC = 0.99 - (Math.pow(+this.value * 2, 3) * 0.95); document.getElementById('vF').textContent=(+this.value).toFixed(2)">
         </div>
       </div>
 
@@ -230,6 +250,8 @@ let polyCoeffs = [];
 let polyTerms = [];
 let polyDegree = 2;
 let currentRMSE = 0;
+
+let animationId = null; // Variable para controlar el bucle de animación
 
 // ROI en porcentajes normalizados [0.0 - 1.0]
 let roi = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
@@ -268,12 +290,36 @@ async function cargarTiffInicial() {
 
     initROIInteraction();
     recalcularModeloYSimulacion();
-    requestAnimationFrame(render3D);
+    
+    // Si había una simulación previa corriendo, la detenemos antes de arrancar otra
+    if (animationId) cancelAnimationFrame(animationId);
+    animationId = requestAnimationFrame(render3D);
 
   } catch (err) {
     console.error(err);
     status.textContent = 'Error al procesar la imagen GeoTIFF.';
   }
+}
+
+// =========================================================
+// FUNCIÓN PARA VOLVER AL INICIO
+// =========================================================
+function volverInicio() {
+  // Detener el bucle de renderizado 3D para ahorrar recursos
+  if (animationId) cancelAnimationFrame(animationId);
+  animationId = null;
+
+  // Limpiar partículas y estados de la simulación
+  clearAll();
+  tiffZData = null;
+
+  // Resetear mensajes y campos del formulario inicial
+  document.getElementById('status').textContent = '';
+  document.getElementById('tiffFile').value = '';
+
+  // Intercambiar visibilidad de las pantallas
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'block';
 }
 
 function renderizarCanvas2D() {
@@ -442,6 +488,10 @@ function initROIInteraction() {
   let activeAction = null;
   let startX, startY, startRoi;
 
+  // Evita re-asignar los event listeners si ya existen
+  if(box.dataset.initialized) return;
+  box.dataset.initialized = "true";
+
   box.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     startX = e.clientX;
@@ -502,7 +552,7 @@ const ct3 = cv3.getContext('2d');
 const W = 600, H = 480;
 cv3.width = W; cv3.height = H;
 
-let G = 9.8, FRIC = 0.88, RATE = 80, DROP_H = 2.5;
+let G = 9.8, FRIC = 0.98, RATE = 40, DROP_H = 2.5;
 
 let CAM = 25 * Math.PI / 180;
 let TILT = 0.9;
@@ -752,7 +802,7 @@ function render3D(ts) {
   drawSettled();
   drawFalling();
   drawHUD();
-  requestAnimationFrame(render3D);
+  animationId = requestAnimationFrame(render3D);
 }
 
 function setMode(m) {
