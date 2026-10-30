@@ -212,7 +212,7 @@
         </div>
         <div class="ctrl">
           <label>Altura inicial gotas <span class="val" id="vH">2.5</span></label>
-          <input type="range" min="0.5" max="6" step="0.1" value="2.5" oninput="DROP_H=+this.value;document.getElementById('vH').textContent=(+this.value).toFixed(1)">
+          <input type="range" min="1.1" max="2" step="0.1" value="1.5" oninput="DROP_H=+this.value;document.getElementById('vH').textContent=(+this.value).toFixed(1)">
         </div>
         <div class="ctrl">
           <label>Gravedad <span class="val" id="vG">9.8</span></label>
@@ -552,7 +552,7 @@ const ct3 = cv3.getContext('2d');
 const W = 600, H = 480;
 cv3.width = W; cv3.height = H;
 
-let G = 9.8, FRIC = 0.98, RATE = 40, DROP_H = 2.5;
+let G = 9.8, FRIC = 0.98, RATE = 40, DROP_H = 1.5;
 
 let CAM = 25 * Math.PI / 180;
 let TILT = 0.9;
@@ -634,7 +634,7 @@ function spawn() {
   else if (mode === 'point') { px = (Math.random() - 0.5) * 0.08; py = (Math.random() - 0.5) * 0.08; }
   else { px = -1 + Math.random() * 2; py = -1 + Math.random() * 2; }
   px = Math.max(-1, Math.min(1, px)); py = Math.max(-1, Math.min(1, py));
-  const tz = terrainZ(px, py), z0 = tz + DROP_H + Math.random() * 0.3;
+  const tz = terrainZ(px, py), z0 = tz * (DROP_H + Math.random() * 0.3);
   return {
     sf: [px, py, z0, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, 0],
     sg: null, onGround: false, age: 0, trail: [], fallTrail: [[px, py, z0]], r: 1.4 + Math.random() * 0.6
